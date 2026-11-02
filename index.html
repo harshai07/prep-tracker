@@ -365,11 +365,34 @@ document.getElementById("next").onclick=()=>{sel=new Date(sel);sel.setDate(sel.g
 document.getElementById("todaybtn").onclick=()=>{sel=today();render()};
 
 lsLoad();render();
-setInterval(()=>{if(keyOf(sel)===keyOf(today())&&!document.activeElement.closest?.(".pipe"))render()},60000); // keep "running" live
+/* ---------- new day: switch the page over and give the sheet a row for it ---------- */
+let curDay=keyOf(today());
+function ensureDay(d){                            // empty row stamped at midnight, so any real tick (later) always wins
+  const k=keyOf(d);
+  if(!(k in meta)){meta[k]=d.getTime();queue[k]=1;lsSave();return true}
+  return false;
+}
+function ensureRecent(){
+  const t=today(),y=new Date(t);y.setDate(t.getDate()-1);
+  const added=ensureDay(y)|ensureDay(t);
+  if(added&&SHEET_URL)flush();
+}
+function checkDay(){
+  const k=keyOf(today());
+  if(k===curDay)return false;
+  if(keyOf(sel)===curDay)sel=today();             // you were on "today": move to the new today
+  curDay=k;ensureRecent();render();
+  return true;
+}
+setInterval(()=>{
+  if(checkDay())return;
+  if(keyOf(sel)===curDay&&!document.activeElement.closest?.(".pipe"))render(); // keep "running" live
+},30000);
+window.addEventListener("focus",checkDay);
 if(SHEET_URL){
   setSync("busy","connecting");
-  pull().then(flush);
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();pull();flush()}});
+  pull().then(()=>{ensureRecent();flush()});
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){checkDay()||render();pull();flush()}});
   window.addEventListener("online",flush);
   window.addEventListener("pagehide",flush);
   setInterval(pull,10000);

@@ -10,6 +10,7 @@ Live: https://prep-tracker-nu-blond.vercel.app
 - In the background, each change is sent immediately and written to a Google Sheet, one row per day.
 - The page pulls from the sheet on open, on tab focus and every 10 s, so other devices catch up.
 - Offline ticks are queued and sent when the connection returns.
+- At midnight the page switches to the new day by itself, and every day (today and yesterday) gets a row in the sheet, even with nothing ticked, so missed days show as 0 / 8.
 
 ## Google Sheet setup (one time)
 
