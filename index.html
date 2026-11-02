@@ -115,6 +115,9 @@ h2{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:0 0 10px}
 </div>
 
 <script>
+// Google Sheet sync (Apps Script web app URL). Leave empty to keep data in this browser only.
+const SHEET_URL="";
+
 const TASKS=[
   {id:"move",time:"8:00–9:30",name:"Gym",hint:"Before any screen time"},
   {id:"dsa",time:"10:30–12:30",name:"DSA",hint:"2–3 NeetCode problems, coded not watched",key:true},
@@ -126,27 +129,64 @@ const TASKS=[
   {id:"phone",time:"All day",name:"Phone away during blocks",hint:"Honest check"}
 ];
 const LSKEY="prep-tracker-v1";
-let days={}; // {"YYYY-MM-DD": ["dsa",...]}
-let docRef=null, writing=false, pending=false;
+let days={};   // "YYYY-MM-DD" -> ["dsa",...]
+let meta={};   // "YYYY-MM-DD" -> last change time (ms)
+let queue={};  // dates changed here but not yet in the sheet
 const pad=n=>String(n).padStart(2,"0");
 const keyOf=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
 const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
 let sel=today();
 
-function lsLoad(){try{const v=JSON.parse(localStorage.getItem(LSKEY)||"{}");if(v&&typeof v==="object")days=v}catch(e){}}
-function lsSave(){try{localStorage.setItem(LSKEY,JSON.stringify(days))}catch(e){}}
-
-async function save(){
-  lsSave();
-  if(!docRef)return;
-  if(writing){pending=true;return}
-  writing=true;
-  try{await docRef.set({days})}catch(e){setStatus("Couldn't sync. Saved on this device only.")}
-  writing=false;
-  if(pending){pending=false;save()}
+function lsLoad(){
+  try{
+    const v=JSON.parse(localStorage.getItem(LSKEY)||"{}");
+    if(v&&v.days){days=v.days;meta=v.meta||{};queue=v.queue||{}}
+    else if(v&&typeof v==="object"){days=v;Object.keys(days).forEach(k=>{meta[k]=Date.now();queue[k]=1})} // older format: push it all once
+  }catch(e){}
 }
+function lsSave(){try{localStorage.setItem(LSKEY,JSON.stringify({days,meta,queue}))}catch(e){}}
 function setStatus(t){document.getElementById("status").textContent=t}
+const clock=()=>new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});
 
+/* ---------- sync: UI never waits on the network ---------- */
+let inflight=false, timer=null;
+function scheduleFlush(ms){clearTimeout(timer);timer=setTimeout(flush,ms)}
+async function flush(){
+  if(!SHEET_URL||inflight)return;
+  const items=Object.keys(queue).map(k=>({date:k,done:days[k]||[],updated:meta[k]||Date.now()}));
+  if(!items.length)return;
+  inflight=true;setStatus("Saving to sheet…");
+  try{
+    const r=await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({items})});
+    const j=await r.json();
+    if(!j.ok)throw new Error("save failed");
+    items.forEach(it=>{if(meta[it.date]===it.updated)delete queue[it.date]});
+    lsSave();setStatus("Synced to sheet · "+clock());
+  }catch(e){
+    setStatus("Offline. Saved here, will sync when back.");
+  }finally{
+    inflight=false;
+    if(Object.keys(queue).length&&navigator.onLine!==false)scheduleFlush(5000);
+  }
+}
+async function pull(){
+  if(!SHEET_URL||document.hidden)return;
+  try{
+    const r=await fetch(SHEET_URL+"?t="+Date.now());
+    const j=await r.json();
+    if(!j.ok)return;
+    let changed=false;
+    Object.keys(j.days).forEach(k=>{
+      if(queue[k])return;                       // local edit wins until it's saved
+      const ru=j.updated[k]||0;
+      if(!meta[k]||ru>meta[k]){days[k]=j.days[k];meta[k]=ru;changed=true;if(!days[k].length)delete days[k]}
+    });
+    if(changed){lsSave();render()}
+    if(!Object.keys(queue).length)setStatus("Synced to sheet · "+clock());
+  }catch(e){}
+}
+
+/* ---------- UI ---------- */
 function render(){
   const k=keyOf(sel), done=new Set(days[k]||[]), isToday=k===keyOf(today());
   const opts={weekday:"long",day:"numeric",month:"short"};
@@ -166,7 +206,9 @@ function render(){
     cb.addEventListener("change",()=>{
       const s=new Set(days[k]||[]);cb.checked?s.add(t.id):s.delete(t.id);
       if(s.size)days[k]=[...s];else delete days[k];
-      render();save();
+      meta[k]=Date.now();queue[k]=1;lsSave();
+      render();                                  // instant
+      scheduleFlush(400);                        // sheet write in background, batched
     });
     list.appendChild(li);
   });
@@ -174,11 +216,10 @@ function render(){
   document.getElementById("barfill").style.width=(done.size/TASKS.length*100)+"%";
   renderStats();renderGrid();
 }
-
 function renderStats(){
   const has=(d,id)=>(days[keyOf(d)]||[]).includes(id);
   let d=today(),streak=0;
-  if(!has(d,"dsa"))d.setDate(d.getDate()-1); // today not done yet doesn't break it
+  if(!has(d,"dsa"))d.setDate(d.getDate()-1);
   while(has(d,"dsa")){streak++;d.setDate(d.getDate()-1)}
   const t=today(),mon=new Date(t);mon.setDate(t.getDate()-((t.getDay()+6)%7));
   let full=0;for(let x=new Date(mon);x<=t;x.setDate(x.getDate()+1))if((days[keyOf(x)]||[]).length>=6)full++;
@@ -187,7 +228,6 @@ function renderStats(){
   document.getElementById("weekdays").textContent=full;
   document.getElementById("dsatotal").textContent=total;
 }
-
 function renderGrid(){
   const g=document.getElementById("grid");g.innerHTML="";
   ["M","T","W","T","F","S","S"].forEach(l=>{const s=document.createElement("div");s.className="dow";s.textContent=l;g.appendChild(s)});
@@ -205,32 +245,17 @@ function renderGrid(){
     g.appendChild(b);
   }
 }
-
 document.getElementById("prev").onclick=()=>{sel=new Date(sel);sel.setDate(sel.getDate()-1);render()};
 document.getElementById("next").onclick=()=>{sel=new Date(sel);sel.setDate(sel.getDate()+1);render()};
 document.getElementById("todaybtn").onclick=()=>{sel=today();render()};
 
 lsLoad();render();
-
-(async()=>{
-  if(!window.claude||!claude.use)return;
-  const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
-  if(!db||!user)return;
-  const uid=await user.id();if(!uid)return;
-  docRef=db.doc("data/users/"+uid+"/tracker");
-  setStatus("Syncing…");
-  const timer=setTimeout(()=>setStatus("Can't reach sync yet. Saved on this device."),10000);
-  let first=true;
-  docRef.onSnapshot(snap=>{
-    if(!snap.metadata.fromCache){clearTimeout(timer);setStatus("Synced across your devices.")}
-    if(snap.exists){
-      const remote=snap.data().days||{};
-      if(first&&!Object.keys(remote).length&&Object.keys(days).length){first=false;save();return}
-      days=JSON.parse(JSON.stringify(remote));lsSave();render();
-    }else if(first&&Object.keys(days).length){save()}
-    first=false;
-  },()=>{clearTimeout(timer);docRef=null;setStatus("Sync stopped. Saved on this device.")});
-})();
+if(SHEET_URL){
+  setStatus("Connecting to sheet…");
+  pull().then(flush);
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden){pull();flush()}});
+  window.addEventListener("online",flush);
+  setInterval(pull,20000);                       // other devices show up within ~20s
+}else setStatus("Saved in this browser.");
 </script>
-
 </body></html>
