@@ -1,5 +1,5 @@
 // Prep Tracker -> Google Sheet sync.
-// 1. Sheet: Extensions -> Apps Script. Replace everything with this file. Save.
+// 1. script.new (standalone project) or Sheet: Extensions -> Apps Script. Replace everything with this file. Save.
 // 2. Pick "setup" in the function menu and click Run (styles the sheet, asks for permission).
 // 3. Deploy -> New deployment -> Web app. Execute as: Me. Who has access: Anyone. Copy the /exec URL.
 
@@ -9,10 +9,12 @@ const HEAD = ['Date'].concat(LABELS, ['Done', 'Updated']);
 const COLS = HEAD.length;            // 11: A..K
 const INK = '#141a2e', BLUE = '#3355e0', SOFT = '#e4e9fc', LINE = '#dfe2ec';
 const FORMAT_VERSION = '2';
+const SHEET_ID = '1YPL_Nj0saWbZfgiLAkDH1j0b3dRi7mZPiLU8bkwZ9mI';
+const book_ = () => SpreadsheetApp.openById(SHEET_ID);
 
 /* ---------- one-time styling ---------- */
 function setup() {
-  const ss = SpreadsheetApp.getActive();
+  const ss = book_();
   const log = ss.getSheets().filter(s => s.getName() !== 'Summary')[0];
   log.setName('Log');
   log.getRange(1, 1, 1, COLS).setValues([HEAD]);
@@ -48,7 +50,7 @@ function setup() {
   ]);
 
   buildSummary_(ss);
-  PropertiesService.getDocumentProperties().setProperty('fmt', FORMAT_VERSION);
+  PropertiesService.getScriptProperties().setProperty('fmt', FORMAT_VERSION);
 }
 
 function buildSummary_(ss) {
@@ -102,9 +104,9 @@ function buildSummary_(ss) {
 
 /* ---------- web app ---------- */
 function sheet_() {
-  const props = PropertiesService.getDocumentProperties();
+  const props = PropertiesService.getScriptProperties();
   if (props.getProperty('fmt') !== FORMAT_VERSION) setup();
-  return SpreadsheetApp.getActive().getSheetByName('Log');
+  return book_().getSheetByName('Log');
 }
 
 function json_(o) {
