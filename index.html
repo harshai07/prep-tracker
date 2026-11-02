@@ -1,0 +1,236 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Daily Prep Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single focused column — today's checklist first, streak + 5-week grid below */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --fg:#17201d; --muted:#5d6b66; --line:#dbe2df;
+  --accent:#1d6b57; --accent-soft:#d8ebe4; --warm:#b5651d;
+  --heat0:#e4e9e7; --heat1:#b9d9cd; --heat2:#7fbba5; --heat3:#3f9479; --heat4:#1d6b57;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211e; --fg:#e6ece9; --muted:#93a39d; --line:#2a3632;
+  --accent:#5cc4a2; --accent-soft:#1f3a31; --warm:#e0a060;
+  --heat0:#222d29; --heat1:#244a3d; --heat2:#2f6f59; --heat3:#43a283; --heat4:#6fd6b3;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211e; --fg:#e6ece9; --muted:#93a39d; --line:#2a3632;
+  --accent:#5cc4a2; --accent-soft:#1f3a31; --warm:#e0a060;
+  --heat0:#222d29; --heat1:#244a3d; --heat2:#2f6f59; --heat3:#43a283; --heat4:#6fd6b3;
+  color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:22px}
+header{display:flex;flex-direction:column;gap:4px}
+h1{font-family:var(--display);font-weight:700;font-size:1.9rem;margin:0;line-height:1.1;text-wrap:balance}
+.sub{color:var(--muted);margin:0}
+.datebar{display:flex;align-items:center;gap:8px}
+.datebar button{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:8px;
+  width:36px;height:36px;cursor:pointer;font-size:1.1rem}
+.datebar button:disabled{opacity:.35;cursor:default}
+.datebar button:focus-visible,.item input:focus-visible+span,.todaybtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.datelabel{flex:1;min-width:0;font-family:var(--display);font-weight:600;font-size:1.15rem}
+.todaybtn{font:500 .85rem var(--body);background:none;border:none;color:var(--accent);cursor:pointer;padding:6px}
+.progress{display:flex;align-items:center;gap:12px}
+.bar{flex:1;height:8px;background:var(--heat0);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.count{font-family:var(--mono);font-size:.85rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:12px;list-style:none;margin:0;padding:0}
+.item{border-top:1px solid var(--line)}
+.item:first-child{border-top:none}
+.item label{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:13px 16px;cursor:pointer;align-items:start}
+.item input{position:absolute;opacity:0;pointer-events:none}
+.box{width:22px;height:22px;border:2px solid var(--line);border-radius:6px;display:grid;place-items:center;margin-top:1px;transition:.15s}
+.item input:checked+.box{background:var(--accent);border-color:var(--accent)}
+.item input:checked+.box::after{content:"";width:6px;height:11px;border:solid var(--bg);border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.txt{min-width:0;display:flex;flex-direction:column;gap:1px}
+.time{font-family:var(--mono);font-size:.75rem;color:var(--muted);letter-spacing:.02em}
+.name{font-weight:600}
+.item input:checked~.txt .name{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+.hint{font-size:.85rem;color:var(--muted)}
+.key{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--warm);margin-left:6px}
+.note{font-size:.88rem;color:var(--muted);background:var(--accent-soft);border-radius:10px;padding:10px 14px;margin:0}
+.stats{display:flex;gap:28px;flex-wrap:wrap}
+.stat b{display:block;font-family:var(--display);font-size:1.8rem;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+h2{font-family:var(--display);font-weight:600;font-size:1.05rem;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;max-width:320px}
+.dow{font-family:var(--mono);font-size:.68rem;color:var(--muted);text-align:center}
+.cell{aspect-ratio:1;max-width:100%;border-radius:5px;background:var(--heat0);border:none;padding:0;cursor:pointer}
+.cell.future{opacity:.3;cursor:default}
+.cell.sel{outline:2px solid var(--fg);outline-offset:1px}
+.l1{background:var(--heat1)}.l2{background:var(--heat2)}.l3{background:var(--heat3)}.l4{background:var(--heat4)}
+.rules{margin:0;padding-left:18px;color:var(--muted);font-size:.9rem;display:flex;flex-direction:column;gap:4px}
+.status{font-size:.78rem;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Daily Prep Tracker</h1>
+    <p class="sub">Tick it as you go. Bad day? The DSA block alone keeps your streak.</p>
+  </header>
+
+  <div class="datebar">
+    <button id="prev" aria-label="Previous day">‹</button>
+    <div class="datelabel" id="datelabel">Today</div>
+    <button class="todaybtn" id="todaybtn" hidden>Back to today</button>
+    <button id="next" aria-label="Next day">›</button>
+  </div>
+
+  <div class="progress"><div class="bar"><i id="barfill"></i></div><span class="count" id="count">0 / 8</span></div>
+
+  <p class="note" id="sundaynote" hidden>Sunday is light: revision and planning only. Check off what you do.</p>
+
+  <ul class="list" id="list"></ul>
+
+  <div class="stats">
+    <div class="stat"><b id="streak">0</b><span>Day streak</span></div>
+    <div class="stat"><b id="weekdays">0</b><span>Full days this week</span></div>
+    <div class="stat"><b id="dsatotal">0</b><span>DSA days total</span></div>
+  </div>
+
+  <section>
+    <h2>Last 5 weeks</h2>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section>
+    <h2>Rules</h2>
+    <ul class="rules">
+      <li>Phone in another room during study blocks.</li>
+      <li>Hardest block first. No LinkedIn or job portals before 4:45.</li>
+      <li>One mock interview a week (Pramp or a friend).</li>
+      <li>Do this for 3–4 weeks before adding more hours.</li>
+    </ul>
+  </section>
+
+  <p class="status" id="status">Saved on this device.</p>
+</div>
+
+<script>
+const TASKS=[
+  {id:"move",time:"8:00–9:30",name:"Gym",hint:"Before any screen time"},
+  {id:"dsa",time:"10:30–12:30",name:"DSA",hint:"2–3 NeetCode problems, coded not watched",key:true},
+  {id:"spring",time:"1:30–3:00",name:"Spring Boot / Java",hint:"One topic, build a small thing"},
+  {id:"sd",time:"3:15–4:45",name:"System design",hint:"One topic, draw it, write notes"},
+  {id:"apply",time:"4:45–5:45",name:"Job hunt",hint:"3–5 applications + 1–2 referral messages, then stop"},
+  {id:"revise",time:"7:00–8:00",name:"Revision",hint:"Redo one old problem, review today's notes"},
+  {id:"plan",time:"10:30",name:"Plan tomorrow",hint:"Write tomorrow's 3 tasks"},
+  {id:"phone",time:"All day",name:"Phone away during blocks",hint:"Honest check"}
+];
+const LSKEY="prep-tracker-v1";
+let days={}; // {"YYYY-MM-DD": ["dsa",...]}
+let docRef=null, writing=false, pending=false;
+const pad=n=>String(n).padStart(2,"0");
+const keyOf=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+const today=()=>{const d=new Date();d.setHours(0,0,0,0);return d};
+let sel=today();
+
+function lsLoad(){try{const v=JSON.parse(localStorage.getItem(LSKEY)||"{}");if(v&&typeof v==="object")days=v}catch(e){}}
+function lsSave(){try{localStorage.setItem(LSKEY,JSON.stringify(days))}catch(e){}}
+
+async function save(){
+  lsSave();
+  if(!docRef)return;
+  if(writing){pending=true;return}
+  writing=true;
+  try{await docRef.set({days})}catch(e){setStatus("Couldn't sync. Saved on this device only.")}
+  writing=false;
+  if(pending){pending=false;save()}
+}
+function setStatus(t){document.getElementById("status").textContent=t}
+
+function render(){
+  const k=keyOf(sel), done=new Set(days[k]||[]), isToday=k===keyOf(today());
+  const opts={weekday:"long",day:"numeric",month:"short"};
+  document.getElementById("datelabel").textContent=(isToday?"Today · ":"")+sel.toLocaleDateString(undefined,opts);
+  document.getElementById("next").disabled=isToday;
+  document.getElementById("todaybtn").hidden=isToday;
+  document.getElementById("sundaynote").hidden=sel.getDay()!==0;
+  const list=document.getElementById("list");list.innerHTML="";
+  TASKS.forEach(t=>{
+    const li=document.createElement("li");li.className="item";
+    li.innerHTML=`<label><input type="checkbox" id="t-${t.id}"><span class="box"></span><span class="txt"><span class="time"></span><span class="name"></span><span class="hint"></span></span></label>`;
+    li.querySelector(".time").textContent=t.time;
+    const nm=li.querySelector(".name");nm.textContent=t.name;
+    if(t.key){const s=document.createElement("span");s.className="key";s.textContent="Streak";nm.appendChild(s)}
+    li.querySelector(".hint").textContent=t.hint;
+    const cb=li.querySelector("input");cb.checked=done.has(t.id);
+    cb.addEventListener("change",()=>{
+      const s=new Set(days[k]||[]);cb.checked?s.add(t.id):s.delete(t.id);
+      if(s.size)days[k]=[...s];else delete days[k];
+      render();save();
+    });
+    list.appendChild(li);
+  });
+  document.getElementById("count").textContent=done.size+" / "+TASKS.length;
+  document.getElementById("barfill").style.width=(done.size/TASKS.length*100)+"%";
+  renderStats();renderGrid();
+}
+
+function renderStats(){
+  const has=(d,id)=>(days[keyOf(d)]||[]).includes(id);
+  let d=today(),streak=0;
+  if(!has(d,"dsa"))d.setDate(d.getDate()-1); // today not done yet doesn't break it
+  while(has(d,"dsa")){streak++;d.setDate(d.getDate()-1)}
+  const t=today(),mon=new Date(t);mon.setDate(t.getDate()-((t.getDay()+6)%7));
+  let full=0;for(let x=new Date(mon);x<=t;x.setDate(x.getDate()+1))if((days[keyOf(x)]||[]).length>=6)full++;
+  const total=Object.values(days).filter(a=>a.includes("dsa")).length;
+  document.getElementById("streak").textContent=streak;
+  document.getElementById("weekdays").textContent=full;
+  document.getElementById("dsatotal").textContent=total;
+}
+
+function renderGrid(){
+  const g=document.getElementById("grid");g.innerHTML="";
+  ["M","T","W","T","F","S","S"].forEach(l=>{const s=document.createElement("div");s.className="dow";s.textContent=l;g.appendChild(s)});
+  const t=today(),mon=new Date(t);mon.setDate(t.getDate()-((t.getDay()+6)%7)-28);
+  for(let i=0;i<35;i++){
+    const d=new Date(mon);d.setDate(mon.getDate()+i);
+    const b=document.createElement("button");b.className="cell";
+    const n=(days[keyOf(d)]||[]).length, lvl=n===0?0:n<=2?1:n<=4?2:n<=6?3:4;
+    if(lvl)b.classList.add("l"+lvl);
+    if(keyOf(d)===keyOf(sel))b.classList.add("sel");
+    b.setAttribute("aria-label",d.toDateString()+": "+n+" of "+TASKS.length);
+    b.title=d.toLocaleDateString(undefined,{day:"numeric",month:"short"})+" · "+n+"/"+TASKS.length;
+    if(d>t){b.classList.add("future");b.disabled=true}
+    else b.addEventListener("click",()=>{sel=d;render()});
+    g.appendChild(b);
+  }
+}
+
+document.getElementById("prev").onclick=()=>{sel=new Date(sel);sel.setDate(sel.getDate()-1);render()};
+document.getElementById("next").onclick=()=>{sel=new Date(sel);sel.setDate(sel.getDate()+1);render()};
+document.getElementById("todaybtn").onclick=()=>{sel=today();render()};
+
+lsLoad();render();
+
+(async()=>{
+  if(!window.claude||!claude.use)return;
+  const [db,user]=await Promise.all([claude.use("db"),claude.use("user")]);
+  if(!db||!user)return;
+  const uid=await user.id();if(!uid)return;
+  docRef=db.doc("data/users/"+uid+"/tracker");
+  setStatus("Syncing…");
+  const timer=setTimeout(()=>setStatus("Can't reach sync yet. Saved on this device."),10000);
+  let first=true;
+  docRef.onSnapshot(snap=>{
+    if(!snap.metadata.fromCache){clearTimeout(timer);setStatus("Synced across your devices.")}
+    if(snap.exists){
+      const remote=snap.data().days||{};
+      if(first&&!Object.keys(remote).length&&Object.keys(days).length){first=false;save();return}
+      days=JSON.parse(JSON.stringify(remote));lsSave();render();
+    }else if(first&&Object.keys(days).length){save()}
+    first=false;
+  },()=>{clearTimeout(timer);docRef=null;setStatus("Sync stopped. Saved on this device.")});
+})();
+</script>
+
+</body></html>
