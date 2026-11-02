@@ -238,18 +238,18 @@ async function flush(){
   if(!SHEET_URL||inflight)return;
   const items=Object.keys(queue).map(k=>({date:k,done:days[k]||[],updated:meta[k]||Date.now()}));
   if(!items.length)return;
-  inflight=true;setSync("busy","saving");
+  inflight=true;setSync("busy","saving");let failed=false;
   try{
-    const r=await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({items})});
+    const r=await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({items}),keepalive:true});
     const j=await r.json();
     if(!j.ok)throw new Error("save failed");
     items.forEach(it=>{if(meta[it.date]===it.updated)delete queue[it.date]});
     lsSave();setSync("ok","synced "+clock());
   }catch(e){
-    setSync("off","offline · queued");
+    failed=true;setSync("off","offline · queued");
   }finally{
     inflight=false;
-    if(Object.keys(queue).length&&navigator.onLine!==false)scheduleFlush(5000);
+    if(Object.keys(queue).length&&navigator.onLine!==false)scheduleFlush(failed?5000:0); // ticks made mid-save go out right away
   }
 }
 async function pull(){
@@ -325,7 +325,7 @@ function render(){
       if(s.size)days[k]=[...s];else delete days[k];
       meta[k]=Date.now();queue[k]=1;lsSave();
       render();document.getElementById("t-"+t.id).focus();
-      if(SHEET_URL)scheduleFlush(400);
+      if(SHEET_URL)flush();                         // write to the sheet immediately, in parallel with the UI
     });
     list.appendChild(li);
   });
@@ -371,7 +371,8 @@ if(SHEET_URL){
   pull().then(flush);
   document.addEventListener("visibilitychange",()=>{if(!document.hidden){render();pull();flush()}});
   window.addEventListener("online",flush);
-  setInterval(pull,20000);
+  window.addEventListener("pagehide",flush);
+  setInterval(pull,10000);
 }else setSync("","local only");
 </script>
 </body>

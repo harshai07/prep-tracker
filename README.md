@@ -7,8 +7,8 @@ Live: https://prep-tracker-nu-blond.vercel.app
 ## How sync works
 
 - Ticking a box updates the page instantly and saves to the browser (localStorage).
-- In the background, changes are batched (400 ms) and written to a Google Sheet, one row per day.
-- The page pulls from the sheet on open, on tab focus and every 20 s, so other devices catch up.
+- In the background, each change is sent immediately and written to a Google Sheet, one row per day.
+- The page pulls from the sheet on open, on tab focus and every 10 s, so other devices catch up.
 - Offline ticks are queued and sent when the connection returns.
 
 ## Google Sheet setup (one time)
