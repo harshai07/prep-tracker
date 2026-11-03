@@ -137,6 +137,27 @@ details ul{margin:10px 0 2px;padding-left:18px;color:var(--muted);font-size:.9re
 .foot{font-family:var(--mono);font-size:.7rem;color:var(--muted);margin:0}
 .foot a{color:inherit}
 
+
+/* desktop: pipeline left, stats + history right */
+.main,.side{display:flex;flex-direction:column;gap:26px;min-width:0}
+kbd{font-family:var(--mono);font-size:.68rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 4px;background:var(--surface);color:var(--fg)}
+.keys{display:none}
+@media (min-width:1000px){
+  .wrap{max-width:1180px;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr);
+    grid-template-areas:"top top" "main side";column-gap:40px;row-gap:28px;padding-block:32px 64px}
+  .top{grid-area:top}
+  .main{grid-area:main}
+  .side{grid-area:side;position:sticky;top:24px;align-self:start}
+  .hero{gap:30px}
+  .ring{width:156px;height:156px}
+  .ringtxt b{font-size:2.4rem}
+  h1{font-size:2.5rem}
+  .row{padding:15px 22px 15px 20px}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .grid{max-width:400px;gap:7px}
+  .keys{display:block}
+}
+@media (min-width:1000px) and (hover:hover){ .row:hover .name{color:var(--accent)} }
 @keyframes blink{50%{opacity:.35}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -148,6 +169,7 @@ details ul{margin:10px 0 2px;padding-left:18px;color:var(--muted);font-size:.9re
     <div class="sync" id="sync"><i></i><span id="status">local</span></div>
   </header>
 
+  <main class="main">
   <section class="hero">
     <div class="ring" aria-hidden="true">
       <svg viewBox="0 0 120 120"><circle class="track" cx="60" cy="60" r="52"/><circle class="fill" id="ringfill" cx="60" cy="60" r="52"/></svg>
@@ -166,6 +188,9 @@ details ul{margin:10px 0 2px;padding-left:18px;color:var(--muted);font-size:.9re
   </section>
 
   <ol class="pipe" id="list" aria-label="Today's stages"></ol>
+  </main>
+
+  <aside class="side">
 
   <section class="stats">
     <div class="stat"><b id="streak">0</b><span>DSA streak</span></div>
@@ -192,7 +217,9 @@ details ul{margin:10px 0 2px;padding-left:18px;color:var(--muted);font-size:.9re
     </ul>
   </details>
 
+  <p class="foot keys">Keys: <kbd>1</kbd>–<kbd>8</kbd> tick a stage · <kbd>←</kbd> <kbd>→</kbd> change day · <kbd>T</kbd> today</p>
   <p class="foot">Ticks save instantly on this device and sync to your Google Sheet in the background.</p>
+  </aside>
 </div>
 
 <script>
@@ -364,6 +391,15 @@ document.getElementById("prev").onclick=()=>{sel=new Date(sel);sel.setDate(sel.g
 document.getElementById("next").onclick=()=>{sel=new Date(sel);sel.setDate(sel.getDate()+1);render()};
 document.getElementById("todaybtn").onclick=()=>{sel=today();render()};
 
+
+/* keyboard shortcuts (desktop) */
+document.addEventListener("keydown",e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  if(e.key==="ArrowLeft"){document.getElementById("prev").click();e.preventDefault()}
+  else if(e.key==="ArrowRight"){const n=document.getElementById("next");if(!n.disabled)n.click();e.preventDefault()}
+  else if(e.key==="t"||e.key==="T"){sel=today();render()}
+  else if(/^[1-8]$/.test(e.key)){document.getElementById("t-"+TASKS[+e.key-1].id).click()}
+});
 lsLoad();render();
 /* ---------- new day: switch the page over and give the sheet a row for it ---------- */
 let curDay=keyOf(today());
